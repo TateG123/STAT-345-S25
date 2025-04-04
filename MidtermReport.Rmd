@@ -1,0 +1,241 @@
+---
+title: "Minnesota Timberwolves Analysis"
+author: "Tate Goretzki"
+date: "2025-04-04"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+```
+
+##Introduction
+
+- Analysis of the Minnesota Timberwolves during the 2019 season
+- Key Findings
+- Detailed Analysis of Key Findings
+- Analysis of Shots Made By Time Remaining
+- Conclusion
+
+##Shot Chart Analysis
+
+- Made Shots = Green, Missed Shots = Blue
+- High concentration of shots in the paint and beyond the three-point line
+- Low make percentage beyond the three-point line
+- Make percentage drastically decreases the further from the basket the shooter is
+
+```{r shot, echo = FALSE}
+#Single Year Chart
+library(devtools)
+devtools::install_github("abresler/nbastatR@aba9179ef644f263387c1536d6ddd26104d79cf4")
+
+library(nbastatR)
+library(ggplot2)
+library(dplyr)
+
+# I received an error message to increase buffer size when running the first line of shot code
+Sys.setenv("VROOM_CONNECTION_SIZE" = 5000000)
+
+shots <- teams_shots(teams = "Minnesota Timberwolves", seasons = 2019)
+
+# NBA Court Dimensions
+court_length <- 94
+court_width <- 50
+
+shots <- shots %>%
+  mutate(
+    #Inches to Feet conversion
+    locationX = locationX / 10,  
+    locationY = locationY / 10,
+    
+    locationY = ifelse(locationY > (court_length / 2), court_length - locationY, locationY),
+    
+    shot_made = ifelse(isShotMade, "Made", "Missed")  
+  )
+
+#Creating NBA Full Court
+draw_full_court <- function() {
+  list(
+    # Court boundary
+    geom_rect(aes(xmin = -court_width/2, xmax = court_width/2, ymin = 0, ymax = court_length), 
+              fill = NA, color = "black"),
+    
+    # Half-court
+    geom_segment(aes(x = -court_width/2, y = court_length/2, xend = court_width/2, yend = court_length/2), 
+                 color = "black"),
+    
+    # Center circle
+    geom_curve(aes(x = -6, y = court_length/2, xend = 6, yend = court_length/2), curvature = 1, color = "black"),
+    
+    #Inbound Areas
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = 0, ymax = 19), fill = NA, color = "black"),
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = court_length - 19, ymax = court_length), fill = NA, color = "black"),
+    
+    # Free throw
+    geom_curve(aes(x = -6, y = 19, xend = 6, yend = 19), curvature = 1, color = "black"),
+    geom_curve(aes(x = -6, y = court_length - 19, xend = 6, yend = court_length - 19), curvature = -1, color = "black"),
+    
+    # Rim and Backboard
+    geom_point(aes(x = 0, y = 4), size = 3, color = "black"),  
+    geom_point(aes(x = 0, y = court_length - 4), size = 3, color = "black"),  
+    geom_segment(aes(x = -3, y = 4.5, xend = 3, yend = 4.5), color = "black", size = 1.5),
+    geom_segment(aes(x = -3, y = court_length - 4.5, xend = 3, yend = court_length - 4.5), color = "black", size = 1.5),
+    
+    # Three-point Lines
+    geom_curve(aes(x = -22, y = 0, xend = 22, yend = 0), curvature = -0.9, color = "black"),
+    geom_curve(aes(x = -22, y = court_length, xend = 22, yend = court_length), curvature = 0.9, color = "black"),
+    
+    
+    geom_segment(aes(x = -22, y = 0, xend = -22, yend = 14), color = "black"),
+    geom_segment(aes(x = 22, y = 0, xend = 22, yend = 14), color = "black"),
+    geom_segment(aes(x = -22, y = court_length, xend = -22, yend = court_length - 14), color = "black"),
+    geom_segment(aes(x = 22, y = court_length, xend = 22, yend = court_length - 14), color = "black")
+  )
+}
+
+# Plotting Shots on Court
+ggplot(shots, aes(x = locationX, y = locationY, color = shot_made)) +
+  draw_full_court() +  
+  geom_point(alpha = 0.2, size = 2) +  
+  scale_color_manual(values = c("Made" = "green", "Missed" = "blue")) +
+  scale_shape_manual(values = c("Made" = 16, "Missed" = 4)) +
+  labs(title = "Minnesota Timberwolves Shot Chart", x = "Baseline", y = "Sideline") +
+  theme_minimal() +
+  coord_fixed(xlim = c(-court_width/2, court_width/2), ylim = c(0, court_length))  
+
+
+```
+
+##Key Findings
+
+- Higher misses beyond the three-point line, this suggests improving three-point shooting
+- Strong scoring in the paint with a high percentage of makes for attempted shots
+- Low amount of mid-range shots further reinforcing a three-point and paint scoring strategy
+- Defenses may force three point shots with a low make percentage instead of a high scoring percentage in the paint
+- Strong performing team, but could improve scoring percentage
+
+##Detailed Analysis of Key Findings --- Shot Distribution
+
+- The Timberwolves had a high distribution of shots on the court with a relatively low scoring percentage
+- Improving shooting form, practicing different shots, and consistent practicing can improve the scoring percentage for three-point shots
+- The Timberwolves should focus on shooting in the paint with a high scoring percentage
+- Focus on keeping shots close to the basket as the closer to the basket the Timberwolves are, the higher scoring percentage
+
+##Detailed Analysis of Key Findings --- Shot Efficiency
+
+- Low scoring percentage beyond the three point line could result from bad spacing, off-ball movement, or lack in three-point scoring development
+- High scoring percentage in the paint indicates strong finishing, ball-handling, strong offensive plays, and body positioning
+- Work on improving the fundamentals of basketball to improve the scoring percentage for the team
+
+##Detailed Analysis of Key Findings --- Tactical Analysis
+
+- Defenses may be forcing the Timberwolves to take more threes with a low scoring percentage
+- Implement offensive strategies such as motion offense, pick-and-rolls, and set plays to create opportunities for shots and drives to the basket
+- Improve catch and shoot efficiency for open looks for three point shots
+- Utilize offensive strategies that focus on shots in the paint
+
+##Analysis of Shots Made By Time Remaining
+
+- Used the secondsRemaining variable to analyze when shots are taken in the shot clock
+- Can help us understand the reasoning behind the low scoring percentage beyond the three point line
+- More shots made late in the shot clock are missed rather than made
+- All shots close to the half court line are late in the shot clock
+- More shots made earlier in the shot clock are closer to the basket
+- Three point attempts are made earlier in the shot clock
+```{r shot_time, echo = FALSE}
+library(devtools)
+devtools::install_github("abresler/nbastatR@aba9179ef644f263387c1536d6ddd26104d79cf4")
+
+library(nbastatR)
+library(ggplot2)
+library(dplyr)
+
+# Increase buffer size to avoid vroom error
+Sys.setenv("VROOM_CONNECTION_SIZE" = 5000000)
+
+# Get shot data for Minnesota Timberwolves in the 2019 season
+shots <- teams_shots(teams = "Minnesota Timberwolves", seasons = 2019)
+
+# NBA Court Dimensions
+court_length <- 94
+court_width <- 50
+
+# Prepare the shot data with time categories and shot result
+shots <- shots %>%
+  mutate(
+    # Convert inches to feet
+    locationX = locationX / 10,  
+    locationY = locationY / 10,
+    
+    # Flip the Y-axis for a full court view
+    locationY = ifelse(locationY > (court_length / 2), court_length - locationY, locationY),
+    
+    # Determine whether the shot was made or missed
+    shot_made = ifelse(isShotMade, "Made", "Missed"),
+    
+    # Categorize the shots based on seconds remaining in the shot clock
+    time_category = case_when(
+      secondsRemaining > 15 ~ "Early",    # Early in shot clock (seconds > 15)
+      secondsRemaining > 5  ~ "Mid",      # Mid shot clock (seconds between 5 and 15)
+      TRUE ~ "Late"                         # Late in shot clock (seconds <= 5)
+    )
+  )
+
+# Function to draw a full NBA court
+draw_full_court <- function() {
+  list(
+    # Court boundary
+    geom_rect(aes(xmin = -court_width/2, xmax = court_width/2, ymin = 0, ymax = court_length), 
+              fill = NA, color = "black"),
+    
+    # Half-court
+    geom_segment(aes(x = -court_width/2, y = court_length/2, xend = court_width/2, yend = court_length/2), 
+                 color = "black"),
+    
+    # Center circle
+    geom_curve(aes(x = -6, y = court_length/2, xend = 6, yend = court_length/2), curvature = 1, color = "black"),
+    
+    # Inbound areas
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = 0, ymax = 19), fill = NA, color = "black"),
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = court_length - 19, ymax = court_length), fill = NA, color = "black"),
+    
+    # Free throw arcs
+    geom_curve(aes(x = -6, y = 19, xend = 6, yend = 19), curvature = 1, color = "black"),
+    geom_curve(aes(x = -6, y = court_length - 19, xend = 6, yend = court_length - 19), curvature = -1, color = "black"),
+    
+    # Rim and backboard
+    geom_point(aes(x = 0, y = 4), size = 3, color = "black"),  
+    geom_point(aes(x = 0, y = court_length - 4), size = 3, color = "black"),  
+    geom_segment(aes(x = -3, y = 4.5, xend = 3, yend = 4.5), color = "black", size = 1.5),
+    geom_segment(aes(x = -3, y = court_length - 4.5, xend = 3, yend = court_length - 4.5), color = "black", size = 1.5),
+    
+    # Three-point lines
+    geom_curve(aes(x = -22, y = 0, xend = 22, yend = 0), curvature = -0.9, color = "black"),
+    geom_curve(aes(x = -22, y = court_length, xend = 22, yend = court_length), curvature = 0.9, color = "black"),
+    geom_segment(aes(x = -22, y = 0, xend = -22, yend = 14), color = "black"),
+    geom_segment(aes(x = 22, y = 0, xend = 22, yend = 14), color = "black"),
+    geom_segment(aes(x = -22, y = court_length, xend = -22, yend = court_length - 14), color = "black"),
+    geom_segment(aes(x = 22, y = court_length, xend = 22, yend = court_length - 14), color = "black")
+  )
+}
+
+# Plotting the shot chart with time categories
+ggplot(shots, aes(x = locationX, y = locationY, color = shot_made, shape = time_category)) +
+  draw_full_court() +  
+  geom_point(alpha = 0.6, size = 2) +  
+  scale_color_manual(values = c("Made" = "green", "Missed" = "red")) +
+  scale_shape_manual(values = c("Early" = 16, "Mid" = 17, "Late" = 18)) +  # Different shapes for time categories
+  labs(title = "Minnesota Timberwolves Shot Chart (2019)",
+       subtitle = "Shots Colored by Made/Missed and Shaped by Time Category",
+       x = "Court X (ft)", 
+       y = "Court Y (ft)",
+       color = "Shot Result", 
+       shape = "Time Category") +
+  coord_fixed(xlim = c(-court_width/2, court_width/2), ylim = c(0, court_length)) +
+  theme_minimal()
+```
+##Conclusion
+
+- The Timberwolves struggled to score beyond the three point line in 2019
+- This could be due to offensive strategies or lack of offensive talent and skill
+- The shot clock did affect the scoring percentage of shots beyond the three point line

@@ -1,0 +1,251 @@
+---
+title: "STAT 345 Midterm Project"
+font: 12pt
+date: "Due April 4"
+output:
+  pdf_document: default
+  word_document: default
+  html_document: default
+---
+
+> "Our offense is like the Pythagorean Theorem. There is no answer!", _Shaquille O'Neal_
+
+## The Background
+
+Your role for the midterm project is that of data analyst intern at an NBA (professional basketball) team. Your direct supervisor (also part of the analytics team) has asked you to create a data visualization to illustrate how (or if) the team's shots have changed over time. After some initial clarifying questions, your supervisor confessed that they had seen some pretty cool shot charts at http://savvastjortjoglou.com/nba-shot-sharts.html and would like to extend the ideas a bit. 
+
+Your data for the midterm project may come from a variety of sources, including the NBA directly, as well as Basketball-Reference, HoopsHype, and others. There are several ways to access the data, but perhaps the simplest is through the `nbastatR` package, which serves as a wrapper (or set of helper functions) for these various data sources. There is a lot of potentially useful information that can be found using this package; unfortunately, the documentation is somewhat inconsistent. For example, the documentation at https://www.rdocumentation.org/packages/nbastatR/versions/0.1.110202031 is pretty well-formatted and easy to navigate, but the current function names have changed a bit (see `?nbastatR` and click "Index"). (If you use the nbastatR package, you'll want to install the package using the following code. There are other packages with this type of data, though.) You are welcome to scrape other websites or use other packages if you choose.
+
+```
+library(devtools)
+devtools::install_github("abresler/nbastatR")
+```
+
+## The Tasks
+
+1. (30 points) Produce a graphic displaying the shot locations for a particular team over several years. Some notes:
+
+   - Colors should be chosen to reflect the team, if possible.
+   - There are likely many overlaid points -- handle this by either binning these by location, or use opacity.
+   - Incorporate information about whether the shot was made or not (shape, color, etc.).
+   - The graphic should be well-labeled, titled, etc.
+   - Start with a graph for a single year, then extend to several years. Up to 20 years of shot data is available. Either facet these by year or animate using the years.
+   - You'll want to figure out what the coordinates mean somehow. This might be through the documentation, but could also be determined using aspects of the data itself and the dimensions of an NBA court.
+    - Put a basketball court on the background of the image (you'll need to scale it appropriately).
+```{r}
+#Single Year Chart
+library(devtools)
+devtools::install_github("abresler/nbastatR@aba9179ef644f263387c1536d6ddd26104d79cf4")
+
+library(nbastatR)
+library(ggplot2)
+library(dplyr)
+
+# I received an error message to increase buffer size when running the first line of shot code
+Sys.setenv("VROOM_CONNECTION_SIZE" = 5000000)
+
+shots <- teams_shots(teams = "Minnesota Timberwolves", seasons = 2019)
+
+# NBA Court Dimensions
+court_length <- 94
+court_width <- 50
+
+shots <- shots %>%
+  mutate(
+    #Inches to Feet conversion
+    locationX = locationX / 10,  
+    locationY = locationY / 10,
+    
+    locationY = ifelse(locationY > (court_length / 2), court_length - locationY, locationY),
+    
+    shot_made = ifelse(isShotMade, "Made", "Missed")  
+  )
+
+#Creating NBA Full Court
+draw_full_court <- function() {
+  list(
+    # Court boundary
+    geom_rect(aes(xmin = -court_width/2, xmax = court_width/2, ymin = 0, ymax = court_length), 
+              fill = NA, color = "black"),
+    
+    # Half-court
+    geom_segment(aes(x = -court_width/2, y = court_length/2, xend = court_width/2, yend = court_length/2), 
+                 color = "black"),
+    
+    # Center circle
+    geom_curve(aes(x = -6, y = court_length/2, xend = 6, yend = court_length/2), curvature = 1, color = "black"),
+    
+    #Inbound Areas
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = 0, ymax = 19), fill = NA, color = "black"),
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = court_length - 19, ymax = court_length), fill = NA, color = "black"),
+    
+    # Free throw
+    geom_curve(aes(x = -6, y = 19, xend = 6, yend = 19), curvature = 1, color = "black"),
+    geom_curve(aes(x = -6, y = court_length - 19, xend = 6, yend = court_length - 19), curvature = -1, color = "black"),
+    
+    # Rim and Backboard
+    geom_point(aes(x = 0, y = 4), size = 3, color = "black"),  
+    geom_point(aes(x = 0, y = court_length - 4), size = 3, color = "black"),  
+    geom_segment(aes(x = -3, y = 4.5, xend = 3, yend = 4.5), color = "black", size = 1.5),
+    geom_segment(aes(x = -3, y = court_length - 4.5, xend = 3, yend = court_length - 4.5), color = "black", size = 1.5),
+    
+    # Three-point Lines
+    geom_curve(aes(x = -22, y = 0, xend = 22, yend = 0), curvature = -0.9, color = "black"),
+    geom_curve(aes(x = -22, y = court_length, xend = 22, yend = court_length), curvature = 0.9, color = "black"),
+    
+    
+    geom_segment(aes(x = -22, y = 0, xend = -22, yend = 14), color = "black"),
+    geom_segment(aes(x = 22, y = 0, xend = 22, yend = 14), color = "black"),
+    geom_segment(aes(x = -22, y = court_length, xend = -22, yend = court_length - 14), color = "black"),
+    geom_segment(aes(x = 22, y = court_length, xend = 22, yend = court_length - 14), color = "black")
+  )
+}
+
+# Plotting Shots on Court
+ggplot(shots, aes(x = locationX, y = locationY, color = shot_made)) +
+  draw_full_court() +  
+  geom_point(alpha = 0.2, size = 2) +  
+  scale_color_manual(values = c("Made" = "green", "Missed" = "blue")) +
+  scale_shape_manual(values = c("Made" = 16, "Missed" = 4)) +
+  labs(title = "Minnesota Timberwolves Shot Chart", x = "Baseline", y = "Sideline") +
+  theme_minimal() +
+  coord_fixed(xlim = c(-court_width/2, court_width/2), ylim = c(0, court_length))  
+
+
+```
+   
+2. (30 points) Summarize the graphic/series of graphics into a digestible, bullet-point brief report for front-office staff. Some notes:
+
+   - The main body of the report should be very brief -- just the graphic(s) and the bullet-pointed list of findings, which should be short and clear.
+   - Include a more detailed explanation of these bullet points, for further reading by those interested. This section should follow the bullet-point section, but should be organized similarly for reference. 
+   - Your report to the front-office shouldn't include any code.
+   - This report should be generated using RMarkdown. However, the choice of output type (Word, PDF, or HTML) is up to you (you could even make slides if you want to). 
+   
+3. (30 points) Write and document clean, efficient, reproducible code. Some notes:
+
+   - This code will be viewed by your direct supervisor.
+   - The code file should include your code to gather, join, and clean the data; the code to generate the graphic(s) presented; and your commentary on the results (so, a single .rmd file, or an .rmd file that sources an .r file).
+   - Your code should be clean, organized, and reproducible. Remove unnecessary/scratch/exploratory code.
+   - Your code should be well commented. In particular, any decisions or judgement calls made in the analysis process should be explained/justified. Sections of code should be identified even if not functionalized (including purpose, data/argument inputs, analysis outputs).
+   
+4. (10 points) Above and Beyond. Choose either option below. You are welcome to explore both, but only one is required. 
+
+  - Option 1: Explore the data a bit, and create a graphic that uses (or incorporates) different information than what was used above. Some notes:
+    - Create an additional graphic that incorporates at least one additional variable not previously used (this should add to the graphic in part 1). The additional data should be drawn from a different dataset (function call) than the original graphic used. These two (or more) datasets may need to be joined appropriately.
+    - You can either add more information to the plot above, or create a different plot. 
+     - Formatting, labelling, etc. are all important here too.
+    - Adding marginal densities or other "bells and whistles" might offer additional insight.
+    - This graphic should be included at the end of the report (after the more detailed explanations). 
+     - You should include a brief description of the graphic (highlighting the different/additional information used).
+```{r}
+# Load necessary libraries
+library(devtools)
+devtools::install_github("abresler/nbastatR@aba9179ef644f263387c1536d6ddd26104d79cf4")
+
+library(nbastatR)
+library(ggplot2)
+library(dplyr)
+
+# Increase buffer size to avoid vroom error
+Sys.setenv("VROOM_CONNECTION_SIZE" = 5000000)
+
+# Get shot data for Minnesota Timberwolves in the 2019 season
+shots <- teams_shots(teams = "Minnesota Timberwolves", seasons = 2019)
+
+# NBA Court Dimensions
+court_length <- 94
+court_width <- 50
+
+# Prepare the shot data with time categories and shot result
+shots <- shots %>%
+  mutate(
+    # Convert inches to feet
+    locationX = locationX / 10,  
+    locationY = locationY / 10,
+    
+    # Flip the Y-axis for a full court view
+    locationY = ifelse(locationY > (court_length / 2), court_length - locationY, locationY),
+    
+    # Determine whether the shot was made or missed
+    shot_made = ifelse(isShotMade, "Made", "Missed"),
+    
+    # Categorize the shots based on seconds remaining in the shot clock
+    time_category = case_when(
+      secondsRemaining > 15 ~ "Early",    # Early in shot clock (seconds > 15)
+      secondsRemaining > 5  ~ "Mid",      # Mid shot clock (seconds between 5 and 15)
+      TRUE ~ "Late"                         # Late in shot clock (seconds <= 5)
+    )
+  )
+
+# Function to draw a full NBA court
+draw_full_court <- function() {
+  list(
+    # Court boundary
+    geom_rect(aes(xmin = -court_width/2, xmax = court_width/2, ymin = 0, ymax = court_length), 
+              fill = NA, color = "black"),
+    
+    # Half-court
+    geom_segment(aes(x = -court_width/2, y = court_length/2, xend = court_width/2, yend = court_length/2), 
+                 color = "black"),
+    
+    # Center circle
+    geom_curve(aes(x = -6, y = court_length/2, xend = 6, yend = court_length/2), curvature = 1, color = "black"),
+    
+    # Inbound areas
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = 0, ymax = 19), fill = NA, color = "black"),
+    geom_rect(aes(xmin = -8, xmax = 8, ymin = court_length - 19, ymax = court_length), fill = NA, color = "black"),
+    
+    # Free throw arcs
+    geom_curve(aes(x = -6, y = 19, xend = 6, yend = 19), curvature = 1, color = "black"),
+    geom_curve(aes(x = -6, y = court_length - 19, xend = 6, yend = court_length - 19), curvature = -1, color = "black"),
+    
+    # Rim and backboard
+    geom_point(aes(x = 0, y = 4), size = 3, color = "black"),  
+    geom_point(aes(x = 0, y = court_length - 4), size = 3, color = "black"),  
+    geom_segment(aes(x = -3, y = 4.5, xend = 3, yend = 4.5), color = "black", size = 1.5),
+    geom_segment(aes(x = -3, y = court_length - 4.5, xend = 3, yend = court_length - 4.5), color = "black", size = 1.5),
+    
+    # Three-point lines
+    geom_curve(aes(x = -22, y = 0, xend = 22, yend = 0), curvature = -0.9, color = "black"),
+    geom_curve(aes(x = -22, y = court_length, xend = 22, yend = court_length), curvature = 0.9, color = "black"),
+    geom_segment(aes(x = -22, y = 0, xend = -22, yend = 14), color = "black"),
+    geom_segment(aes(x = 22, y = 0, xend = 22, yend = 14), color = "black"),
+    geom_segment(aes(x = -22, y = court_length, xend = -22, yend = court_length - 14), color = "black"),
+    geom_segment(aes(x = 22, y = court_length, xend = 22, yend = court_length - 14), color = "black")
+  )
+}
+
+# Plotting the shot chart with time categories
+ggplot(shots, aes(x = locationX, y = locationY, color = shot_made, shape = time_category)) +
+  draw_full_court() +  
+  geom_point(alpha = 0.6, size = 2) +  
+  scale_color_manual(values = c("Made" = "green", "Missed" = "red")) +
+  scale_shape_manual(values = c("Early" = 16, "Mid" = 17, "Late" = 18)) +  # Different shapes for time categories
+  labs(title = "Minnesota Timberwolves Shot Chart (2019)",
+       subtitle = "Shots Colored by Made/Missed and Shaped by Time Category",
+       x = "Court X (ft)", 
+       y = "Court Y (ft)",
+       color = "Shot Result", 
+       shape = "Time Category") +
+  coord_fixed(xlim = c(-court_width/2, court_width/2), ylim = c(0, court_length)) +
+  theme_minimal()
+
+```
+
+  - Option 2: If the NBA were to incorporate a 4-point shot, where would you draw a 4-point arc? Some notes:
+    - You likely should base your decision at least partly on proportion of shots made from a given range. You might consider an expected value calculation here.
+    - Your arc can be shaped as you see fit; simple arcs are sufficient for this exploration.
+    - Provide an example of a consequence (positive or negative) if a 4-point shot was incorporated. (e.g., "my_favorite_player's season point total would increase by x%")
+    - You do not need to create a plot representing your arc, though you are welcome to do so!
+
+  
+## The Deliverables
+
+1. Upload your report and code file(s) to GitHub by 11:00am on Friday, April 4.
+2. Submit (on Canvas) your report, code, and link to your GitHub repository by 11:00am on Friday, April 4.
+  
+  
+  
+  
+
+
